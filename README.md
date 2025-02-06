@@ -10,7 +10,7 @@ This project syncs tasks from Notion to Apple Calendar by:
 
 
 
-const DATABASE_ID = "18d127d0fe4180e6af3ed86f0025d279";  
+const DATABASE_ID = "DATABASE_ID";  
 
 ## Requirements
 - Node.js installed on your server.
