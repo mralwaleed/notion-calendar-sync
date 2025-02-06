@@ -1,9 +1,15 @@
-const moment = require("moment-timezone"); 
+require("dotenv").config();
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const fs = require("fs");
+const moment = require("moment-timezone");
 
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
-const DATABASE_ID = process.env.DATABASE_ID;
+const DATABASE_ID = process.env.NOTION_DATABASE_ID;
+
+if (!NOTION_API_KEY || !DATABASE_ID) {
+    console.error("❌ Missing environment variables! Check your .env file.");
+    process.exit(1);
+}
 
 async function getNotionEvents() {
     const response = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
@@ -31,51 +37,27 @@ async function generateICS() {
     const events = await getNotionEvents();
 
     if (events.length === 0) {
-        console.error("🚨 No events found in Notion. Make sure the data is correct!");
+        console.error("No events found in Notion. Make sure the data is correct!");
         return;
     }
 
-    let icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Notion Calendar//EN\n`;
+    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Notion Calendar//EN\n";
 
     events.forEach(event => {
         if (!event.start) return;
 
-        const timezone = "Asia/Riyadh"; 
+        const timezone = "Asia/Riyadh";
         const startDate = moment.tz(event.start, timezone).format("YYYYMMDDTHHmmss");
         const endDate = moment.tz(event.end, timezone).format("YYYYMMDDTHHmmss");
 
-        icsContent += `
-BEGIN:VEVENT
-SUMMARY:${event.title}
-DTSTART;TZID=${timezone}:${startDate}
-DTEND;TZID=${timezone}:${endDate}
-DESCRIPTION:${event.description}
-
-BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:Reminder (30 minutes before) - ${event.title}
-TRIGGER:-PT30M
-END:VALARM
-
-BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:Reminder (At event time) - ${event.title}
-TRIGGER:PT0M
-END:VALARM
-
-BEGIN:VALARM
-ACTION:AUDIO
-TRIGGER:PT0M
-ATTACH;VALUE=URI:Basso
-END:VALARM
-
-END:VEVENT`;
+        icsContent += `\nBEGIN:VEVENT\nSUMMARY:${event.title}\nDTSTART;TZID=${timezone}:${startDate}\nDTEND;TZID=${timezone}:${endDate}\nDESCRIPTION:${event.description}\n\nBEGIN:VALARM\nACTION:DISPLAY\nDESCRIPTION:Reminder (30 minutes before) - ${event.title}\nTRIGGER:-PT30M\nEND:VALARM\n\nBEGIN:VALARM\nACTION:DISPLAY\nDESCRIPTION:Reminder (At event time) - ${event.title}\nTRIGGER:PT0M\nEND:VALARM\n\nBEGIN:VALARM\nACTION:AUDIO\nTRIGGER:PT0M\nATTACH;VALUE=URI:Basso\nEND:VALARM\n\nEND:VEVENT`;
     });
 
-    icsContent += `\nEND:VCALENDAR`;
+    icsContent += "\nEND:VCALENDAR";
 
-    fs.writeFileSync("notion-calendar.ics", icsContent);
-    console.log("✅ Calendar updated successfully with alerts and sound!");
+    fs.writeFileSync("/var/www/html/static/notion-calendar.ics", icsContent);
+    console.log("Calendar updated successfully with alerts and sound!");
 }
 
 generateICS();
+
